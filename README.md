@@ -2,7 +2,7 @@
 
 ## Basics
 
-´´´bash
+```bash
 apt update && apt upgrade -y && curl -fsSL https://tailscale.com/install.sh | sh
 ```
 
