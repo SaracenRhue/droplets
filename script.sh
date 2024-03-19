@@ -1,80 +1,73 @@
 #!/bin/bash
 
-# Check if the script is run as root, if not, try to restart it with sudo
+# Ensure the script is run as root, otherwise restart it with sudo
 if [ "$(id -u)" -ne 0 ]; then
-    echo "Attempting to restart the script with root privileges..."
+    echo "This script needs to be run as root. Trying to restart with sudo..."
     exec sudo bash "$0" "$@"
     exit $?
 fi
 
-# Install dialog if not already installed
+# Install dialog if it's not already installed
 if ! command -v dialog &> /dev/null; then
     echo "Dialog not found. Installing dialog..."
-    apt update && apt install -y dialog
+    apt-get update && apt-get install -y dialog
 fi
 
-# Define the dialog exit status codes
-: "${DIALOG_OK=0}"
-: "${DIALOG_CANCEL=1}"
-: "${DIALOG_ESC=255}"
-
-# Function to update system
+# Define functions for each task
 update_system() {
     echo "Updating system..."
-    apt update && apt upgrade -y
+    apt-get update && apt-get upgrade -y
+    echo "System updated."
 }
 
-# Function to install Tailscale
 install_tailscale() {
     echo "Installing Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | sh
+    echo "Tailscale installed."
 }
 
-# Function to setup Docker
 setup_docker() {
     echo "Setting up Docker..."
-    curl -fsSL https://get.docker.com | sh && apt install docker-compose -y && systemctl enable docker && systemctl start docker
+    curl -fsSL https://get.docker.com | sh
+    apt-get install -y docker-compose
+    systemctl enable docker
+    systemctl start docker
+    echo "Docker setup completed."
 }
 
-# Function to setup Python
 setup_python() {
     echo "Setting up Python..."
-    apt install -y python3 python3-pip python-is-python3
+    apt-get install -y python3 python3-pip
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+    echo "Python setup completed."
 }
 
-# Show dialog checklist
+# Show dialog checklist and capture selections
 exec 3>&1
-selection=$(dialog \
+selections=$(dialog \
     --backtitle "Setup Menu" \
     --title "Select options" \
     --clear \
     --cancel-label "Exit" \
-    --checklist "Please select:" 0 0 4 \
-    "1" "Update system" off \
-    "2" "Install Tailscale" off \
-    "3" "Setup Docker" off \
-    "4" "Setup Python" off \
+    --checklist "Please select:" 15 50 4 \
+    1 "Update system" off \
+    2 "Install Tailscale" off \
+    3 "Setup Docker" off \
+    4 "Setup Python" off \
     2>&1 1>&3)
 exit_status=$?
 exec 3>&-
 
-# Exit if user cancels or escapes the dialog
-[[ $exit_status -eq $DIALOG_CANCEL ]] || [[ $exit_status -eq $DIALOG_ESC ]] && clear && exit
+# Check if the user canceled or closed the dialog
+if [ $exit_status -ne 0 ]; then
+    echo "No selection made or dialog was cancelled."
+    exit 1
+fi
 
-# Parse selections and call functions accordingly
-for choice in $selection; do
-    case $choice in
-        '"1"')
-            update_system
-            ;;
-        '"2"')
-            install_tailscale
-            ;;
-        '"3"')
-            setup_docker
-            ;;
-        '"4"')
-            setup_python
-            ;;
-    esac
-done
+# Process selections
+if [[ $selections =~ "1" ]]; then update_system; fi
+if [[ $selections =~ "2" ]]; then install_tailscale; fi
+if [[ $selections =~ "3" ]]; then setup_docker; fi
+if [[ $selections =~ "4" ]]; then setup_python; fi
+
+echo "All selected tasks have been completed."
