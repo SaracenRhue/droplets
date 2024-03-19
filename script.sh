@@ -16,7 +16,7 @@ fi
 # Define functions for each task
 update_system() {
     echo "Updating system..."
-    apt-get update && apt-get upgrade -y
+    apt-get update && apt-get upgrade -y && apt-get install -y htop
     echo "System updated."
 }
 
@@ -70,4 +70,5 @@ if [[ $selections =~ "2" ]]; then install_tailscale; fi
 if [[ $selections =~ "3" ]]; then setup_docker; fi
 if [[ $selections =~ "4" ]]; then setup_python; fi
 
+apt-get autoremove -y
 echo "All selected tasks have been completed."
